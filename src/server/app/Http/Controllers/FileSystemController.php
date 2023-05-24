@@ -23,23 +23,27 @@ class FileSystemController extends Controller
      * Get directory list
      */
     public function list(Request $request) {
-        $dirpath = $this->getDirPath($request);
-
-        $files = scandir( base_path().$this->root.$dirpath, SCANDIR_SORT_ASCENDING );
-        if (!$files) {
-            return response()->json([]);
+        try {
+            $dirpath = $this->getDirPath($request);
+            $files = scandir( $this->reelPath($dirpath), SCANDIR_SORT_ASCENDING );
+            if (!$files) {
+                return response()->json([]);
+            }
+            $files = array_values(array_filter($files, function ($m) {return !in_array($m, [".", ".."]); }));
+            return response()->json(["status" => true, "files" => $files]);
+        } catch (\Throwable $th) {
+            return response()->json(["status" => false, "files" => []]);
         }
-        $files = array_values(array_filter($files, function ($m) {return !in_array($m, [".", ".."]); }));
-        return response()->json(["status" => true, "files" => $files]);
     }
 
     /**
      * Get file conent
      */
     public function content(Request $request) {
-        $file = "/".$request->input("fl");
         try {
-            $content = file_get_contents( base_path().$this->root.$file );
+            $jdata = $request->json()->all();
+            $file = $jdata["fl"];
+            $content = file_get_contents( $this->reelPath($file) );
             return response()->json(["status" => true, "content" => $content]);
         } catch (\Throwable $th) {
             return response()->json(["status" => false, "message" => $th->getMessage()]);
@@ -51,23 +55,32 @@ class FileSystemController extends Controller
      * Create directory
      */
     public function createdir(Request $request) {
-        $dirpath = $this->getDirPath($request);
-        if (base_path().$this->root.mkdir($dirpath)) {
-            return response()->json(["status" => true]);
-        } else {
-            return response()->json(["status" => false]);
+        try {
+            $dirpath = $this->getDirPath($request);
+            if (mkdir($this->reelPath($dirpath))) {
+                return response()->json(["status" => true]);
+            } else {
+                return response()->json(["status" => false]);
+            }
+        } catch (\Throwable $th) {
+            return response()->json(["status" => false, "message" => $th->getMessage()]);
         }
     }
 
+    /**
+     * Rename directory
+     */
+    public function renamedir(Request $request) {
+        $dirpath = $this->getDirPath($request);
+        $newname = dirname($dirpath);
+    }
 
     private function getDirPath(Request $request) {
-        $dirpath = $request->input("dir");
-        if (!$dirpath) {
-            $dirpath = "/";
-        } else {
-            $dirpath = "/" . $dirpath;
-        }
+        $jdata = $request->json()->all();
+        $dirpath = "/".$jdata["dir"];
         return $dirpath;
     }
-
+    private function reelPath($path) {
+        return base_path().$this->root.$path;
+    }
 }

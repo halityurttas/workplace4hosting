@@ -16,5 +16,6 @@ $router->get('/', function () use ($router) {
     return $router->app->version();
 });
 
-$router->get('list', ['uses' => 'FileSystemController@list']);
-$router->get('content', ['uses' => 'FileSystemController@content']);
+$router->post('list', ['uses' => 'FileSystemController@list']);
+$router->post('content', ['uses' => 'FileSystemController@content']);
+$router->post('createdir', ['uses' => 'FileSystemController@createdir']);
