@@ -97,9 +97,18 @@ class FileSystemController extends Controller
      * Rename directory
      */
     public function renamedir(Request $request) {
-        $jdata = $request->json()->all();
-        $dirpath = $this->getDirPath($request);
-        $newname = $jdata["toname"]
+        try {
+            $jdata = $request->json()->all();
+            $dirpath = $this->getDirPath($request);
+            $newname = dirname($dirpath).$jdata["newpath"];
+            if (rename($this->reelPath($dirpath), $this->reelPath($newname))) {
+                return response()->json(["status" => true]);
+            } else {
+                return response()->json(["status" => true]);
+            }
+        } catch (\Throwable $th) {
+            return response()->setStatusCode(500);
+        }
     }
 
     private function getDirPath(Request $request) {
