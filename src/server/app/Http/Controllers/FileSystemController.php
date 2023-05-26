@@ -29,10 +29,16 @@ class FileSystemController extends Controller
             if (!$files) {
                 return response()->json([]);
             }
-            $files = array_values(array_filter($files, function ($m) {return !in_array($m, [".", ".."]); }));
-            return response()->json(["status" => true, "files" => $files]);
+            $files = array_map(function ($m) {
+                    return $m;
+                }, array_values(array_filter($files, function ($m) {
+                        return !in_array($m, [".", ".."]);
+                    })
+                )
+            );
+            return response()->json($files);
         } catch (\Throwable $th) {
-            return response()->json(["status" => false, "files" => []]);
+            return response()->setStatusCode(500);
         }
     }
 
@@ -42,13 +48,33 @@ class FileSystemController extends Controller
     public function content(Request $request) {
         try {
             $jdata = $request->json()->all();
-            $file = $jdata["fl"];
+            $file = $jdata["path"];
             $content = file_get_contents( $this->reelPath($file) );
-            return response()->json(["status" => true, "content" => $content]);
+            return response()->json(["content" => $content]);
         } catch (\Throwable $th) {
-            return response()->json(["status" => false, "message" => $th->getMessage()]);
+            return response()->setStatusCode(500);
         }
 
+    }
+
+    /**
+     * Set file content
+     */
+    public function setContent(Request $request) {
+        try {
+            $jdata = $request->json()->all();
+            $path = $jdata["path"];
+            $content = $jdata["content"];
+            $create = $jdata["create"];
+            $overwrite = $jdata["overwrite"];
+            if ((file_exists($this->reelPath($path)) && $overwrite) || (!file_exists($this->reelPath($path)) && $create)) {
+                file_put_contents($this->reelPath($path), $content);
+                return response()->json(["status" => true]);
+            }
+            return response()->json(["status" => false]);
+        } catch (\Throwable $th) {
+            return response()->setStatusCode(500);
+        }
     }
 
     /**
@@ -63,7 +89,7 @@ class FileSystemController extends Controller
                 return response()->json(["status" => false]);
             }
         } catch (\Throwable $th) {
-            return response()->json(["status" => false, "message" => $th->getMessage()]);
+            return response()->setStatusCode(500);
         }
     }
 
@@ -71,13 +97,14 @@ class FileSystemController extends Controller
      * Rename directory
      */
     public function renamedir(Request $request) {
+        $jdata = $request->json()->all();
         $dirpath = $this->getDirPath($request);
-        $newname = dirname($dirpath);
+        $newname = $jdata["toname"]
     }
 
     private function getDirPath(Request $request) {
         $jdata = $request->json()->all();
-        $dirpath = "/".$jdata["dir"];
+        $dirpath = "/".$jdata["path"];
         return $dirpath;
     }
     private function reelPath($path) {
