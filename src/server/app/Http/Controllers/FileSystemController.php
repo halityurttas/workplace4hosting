@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Http\Request;
 
 class FileSystemController extends Controller
@@ -30,7 +31,7 @@ class FileSystemController extends Controller
                 return response()->json([]);
             }
             $files = array_map(function ($m) {
-                    return $m;
+                    return ["path" => $m, "name" => basename($m), "type" => is_dir($m) ? 0 : 1 ];
                 }, array_values(array_filter($files, function ($m) {
                         return !in_array($m, [".", ".."]);
                     })
@@ -104,7 +105,26 @@ class FileSystemController extends Controller
             if (rename($this->reelPath($dirpath), $this->reelPath($newname))) {
                 return response()->json(["status" => true]);
             } else {
+                return response()->json(["status" => false]);
+            }
+        } catch (\Throwable $th) {
+            return response()->setStatusCode(500);
+        }
+    }
+
+    /**
+     * Copy directory
+     */
+    public function copydir(Request $request) {
+        try {
+            $jdata = $request->json()->all();
+            $dirpath = $this->getDirPath($request);
+            $targetpath = $jdata["targetpath"];
+            $filesystem = new Filesystem();
+            if ($filesystem->copyDirectory($this->reelPath($dirpath), $this->reelPath("/".$targetpath))) {
                 return response()->json(["status" => true]);
+            } else {
+                return response()->json(["status" => false]);
             }
         } catch (\Throwable $th) {
             return response()->setStatusCode(500);
